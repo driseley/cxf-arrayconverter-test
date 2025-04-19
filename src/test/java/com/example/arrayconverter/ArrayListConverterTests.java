@@ -115,6 +115,7 @@ class ArrayListConverterTests {
     
     @Test
     @Order(2)
+    // Note this shows the issues, but does not fail
     void testFailedCxfRestCallWithCallingLoggingRoute() {
 
         // There is no List -> String type convertor
@@ -127,7 +128,7 @@ class ArrayListConverterTests {
                 List.of(
                     new Fruit("apples"), 
                     new Fruit("bananas"), 
-                    new Fruit("carrots")
+                    new Fruit("cherries")
                 )));
 
         // Notice a List -> String type converter has been registered
@@ -135,7 +136,7 @@ class ArrayListConverterTests {
         assertNotNull(t);
         assertEquals(org.apache.camel.impl.converter.ToStringTypeConverter.class, t.getClass());
 
-        /// Call the echo CXF Rest service in separate route
+        // Call the echo CXF Rest service in separate route
         Exchange responseExchange = producerTemplate.send("http://localhost:8001/echo?say=hello", e -> {});
         assertNull(responseExchange.getException());
         assertEquals(200, responseExchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class));
@@ -147,5 +148,27 @@ class ArrayListConverterTests {
         t = defaultTypeConverter.getTypeConverter(String.class, MessageContentsList.class);
         assertNotNull(t);
         assertEquals(org.apache.camel.impl.converter.ToStringTypeConverter.class, t.getClass());
+    }
+
+    @Test
+    @Order(3)
+    void testCxfRestCallWithCallingLoggingRoute() {
+
+        // Trigger logging of an array of records in one route
+        producerTemplate.sendBody("direct:logging", 
+            new ArrayList<Fruit>(
+                List.of(
+                    new Fruit("apples"), 
+                    new Fruit("bananas"), 
+                    new Fruit("cherries")
+                )));
+
+        // Call the echo CXF Rest service in separate route
+        Exchange responseExchange = producerTemplate.send("http://localhost:8001/echo?say=hello", e -> {});
+        assertNull(responseExchange.getException());
+        assertEquals(200, responseExchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class));
+        
+        // THIS IS THE FAILURE - the logging in the first route has impacted the format of the payload
+        assertEquals("hello", responseExchange.getMessage().getBody(String.class));
     }
 }
