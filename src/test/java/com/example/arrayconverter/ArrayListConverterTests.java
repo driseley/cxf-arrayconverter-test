@@ -1,21 +1,20 @@
 package com.example.arrayconverter;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.ArrayList;
-import java.util.List;
-
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.RoutesBuilder;
-import org.apache.camel.TypeConverter;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.cxf.spring.jaxrs.SpringJAXRSServerFactoryBean;
 import org.apache.camel.impl.converter.DefaultTypeConverter;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.cxf.Bus;
-import org.apache.cxf.message.MessageContentsList;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,8 +25,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @CamelSpringBootTest
 @EnableAutoConfiguration
@@ -102,56 +104,10 @@ class ArrayListConverterTests {
 
         // This is the expected output - the value of the say query paramater
         assertEquals("hello", responseExchange.getMessage().getBody(String.class));
-
-        // There is no List -> String type convertor
-        TypeConverter t = defaultTypeConverter.getTypeConverter(String.class, ArrayList.class);
-        assertNull(t);
-
-         // The MessageContentsList -> String type converter is the expected SpringTypeConverter
-        t = defaultTypeConverter.getTypeConverter(String.class, MessageContentsList.class);
-        assertNotNull(t);
-        assertEquals(org.apache.camel.spring.boot.SpringTypeConverter.class, t.getClass());
     }
     
     @Test
     @Order(2)
-    // Note this shows the issues, but does not fail
-    void testFailedCxfRestCallWithCallingLoggingRoute() {
-
-        // There is no List -> String type convertor
-        TypeConverter t = defaultTypeConverter.getTypeConverter(String.class, ArrayList.class);
-        assertNull(t);
-
-        // Trigger logging of an array of records in one route
-        producerTemplate.sendBody("direct:logging", 
-            new ArrayList<Fruit>(
-                List.of(
-                    new Fruit("apples"), 
-                    new Fruit("bananas"), 
-                    new Fruit("cherries")
-                )));
-
-        // Notice a List -> String type converter has been registered
-        t = defaultTypeConverter.getTypeConverter(String.class, ArrayList.class);
-        assertNotNull(t);
-        assertEquals(org.apache.camel.impl.converter.ToStringTypeConverter.class, t.getClass());
-
-        // Call the echo CXF Rest service in separate route
-        Exchange responseExchange = producerTemplate.send("http://localhost:8001/echo?say=hello", e -> {});
-        assertNull(responseExchange.getException());
-        assertEquals(200, responseExchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class));
-        
-        // THIS IS THE FAILURE - the logging in the first route has impacted the format of the payload
-        assertEquals("[hello]", responseExchange.getMessage().getBody(String.class));
-
-        // The type converter above overrides what should be the the SpringTypeConverter
-        t = defaultTypeConverter.getTypeConverter(String.class, MessageContentsList.class);
-        assertNotNull(t);
-        assertEquals(org.apache.camel.impl.converter.ToStringTypeConverter.class, t.getClass());
-    }
-
-    @Test
-    @Order(3)
     void testCxfRestCallWithCallingLoggingRoute() {
 
         // Trigger logging of an array of records in one route
@@ -167,8 +123,19 @@ class ArrayListConverterTests {
         Exchange responseExchange = producerTemplate.send("http://localhost:8001/echo?say=hello", e -> {});
         assertNull(responseExchange.getException());
         assertEquals(200, responseExchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class));
-        
-        // THIS IS THE FAILURE - the logging in the first route has impacted the format of the payload
         assertEquals("hello", responseExchange.getMessage().getBody(String.class));
+    }
+
+    @Test
+    @Order(3)
+    void testSuccessfulCxfRestCallWithoutAnyParameters() {
+        
+        // Call the echo CXF Rest service
+        Exchange responseExchange = producerTemplate.send("http://localhost:8001/echo", e -> {});
+        assertNull(responseExchange.getException());
+        assertEquals(200, responseExchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class));
+
+        // This is the expected output - the value of the say query parameter - which is null
+        assertEquals("null", responseExchange.getMessage().getBody(String.class));
     }
 }

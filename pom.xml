@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.4</version>
+		<version>3.4.5</version>
 		<relativePath />
 	</parent>
 	<groupId>com.example</groupId>
@@ -16,12 +16,10 @@
 	<description>Demo for logging / cxf bug</description>
 	<properties>
 		<java.version>21</java.version>
-		<!-- Works -->
-		<!-- <camel.version>4.1.0</camel.version> -->
-		<!-- Broken in 4.2.0 probably by https://issues.apache.org/jira/browse/CAMEL-19398 -->
-		<!-- <camel.version>4.2.0</camel.version> -->
-		<!-- Still broken in latest -->
-		<camel.version>4.10.2</camel.version>
+		<!-- Test with logger fails in 4.10.3, no params passes -->
+		<!-- <camel.version>4.10.3</camel.version> -->
+		<!-- Test with logger passes in 4.10.4, no params fails -->
+		<camel.version>4.10.4</camel.version>
 		<cxf.version>4.1.1</cxf.version>
 	</properties>
 	<dependencyManagement>
